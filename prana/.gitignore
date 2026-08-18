@@ -1,0 +1,19 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# Local ingestion working data (raw sources can be large / environment-specific)
+data/raw/pdfs/*
+data/raw/documents/*
+data/raw/websites/*
+data/processed/chunks/*
+!data/raw/pdfs/.gitkeep
+!data/raw/documents/.gitkeep
+!data/raw/websites/.gitkeep
+!data/processed/chunks/.gitkeep
