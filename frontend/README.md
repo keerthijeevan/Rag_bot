@@ -1,106 +1,108 @@
-﻿# Website AI RAG Chatbot - Frontend
+﻿# Website AI RAG Chatbot – Frontend
 
-Modern, responsive React frontend interface for the Website-specific AI RAG Chatbot. Integrates directly with the FastAPI RAG backend (`/rag/chat` and `/health`).
+Modern, responsive React frontend for the Website AI RAG Chatbot. It connects directly to the FastAPI backend through:
 
----
+- `POST /rag/chat`
+- `GET /rith`
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
-### 1. Prerequisites
-- **Node.js**: v18+ (tested on Node.js v24.x LTS)
-- **FastAPI Backend**: Running on `http://localhost:8000`
+### Prerequisites
 
-### 2. Setup & Configuration
+- Node.js 18 or later
+- FastAPI backend running at `http://localhost:8000`
+
+### Setup and configuration
 
 From the project root:
 
-```bash
+```powershell
 cd frontend
-cp .env.example .env
+Copy-Item .env.example .env
 npm install
 ```
 
-Ensure `.env` points to your running FastAPI backend:
+Ensure `.env` contains:
+
 ```env
 VITE_RAG_API_URL=http://localhost:8000
 ```
 
-### 3. Run Development Server
+### Run the development server
 
-```bash
+```powershell
 npm run dev
 ```
 
-Open your browser at:
-**[http://localhost:5173](http://localhost:5173)**
+Open:
 
----
+[http://localhost:3000](http://localhost:3000)
 
-## 🧪 Testing & Building
+> `vite.config.js` must use port `3000` so it matches the backend's permitted local origin.
 
-```bash
-# Run unit & component tests
+## Testing and Building
+
+```powershell
+# Run unit and component tests
 npm test
 
-# Build optimized production bundle
+# Build the production bundle
 npm run build
 
-# Preview production build locally
+# Preview the production build locally
 npm run preview
 ```
 
----
+## Architecture and Flow
 
-## 🏗 Architecture & Flow
-
-```
+```text
 [ Browser / React Frontend ]
-            │
-   (HTTP POST /rag/chat)
-            │
-            ▼
+            |
+     HTTP POST /rag/chat
+            |
+            v
    [ FastAPI Backend ]
-            │
+            |
    [ LangGraph Controller ]
-      ├── Message Classifier (GREETING / OUT_OF_SCOPE / KNOWLEDGE_QUERY)
-      ├── Hybrid Retrieval (Dense BGE + Sparse BM25 via Qdrant)
-      ├── BGE Reranker
-      ├── Optional Web Fallback Scraper
-      └── Gemini Answer Generation
-            │
-            ▼
-[ Chat Response: Answer + Sources + Metadata ]
-            │
-            ▼
-[ React UI: Markdown Formatting + Source Cards + Safe Links ]
+      |- Greeting Classifier (GREETING / NOT_GREETING)
+      |- Hybrid Retrieval (Dense BGE + Sparse BM25 via Qdrant)
+      |- BGE Reranker
+      |- Optional Website Fallback
+      `- Gemini Answer Generation
+            |
+            v
+     [ Chat Response: Answer ]
+            |
+            v
+[ React UI: Markdown Formatting + Safe Links ]
 ```
 
----
+> The frontend supports source cards. They will appear when the backend returns a `sources` array in its chat response.
 
-## 📁 Directory Structure
+## Directory Structure
 
-```
+```text
 frontend/
 ├── src/
 │   ├── components/Chatbot/
-│   │   ├── Chatbot.jsx            # Main container component
-│   │   ├── ChatHeader.jsx         # Header with live status & reset button
-│   │   ├── ChatMessages.jsx       # Message stream & welcome card
-│   │   ├── ChatMessage.jsx        # Message bubble with Markdown formatting
-│   │   ├── SourceList.jsx         # Expandable sources accordion & external links
-│   │   ├── SuggestedQuestions.jsx # Starter chips for common queries
-│   │   ├── TypingIndicator.jsx    # Animated pulsing typing indicator
-│   │   ├── ChatInput.jsx          # Auto-resizing input with keyboard shortcuts
-│   │   └── ErrorMessage.jsx       # User-friendly error alert with Retry action
+│   │   ├── Chatbot.jsx            # Main chatbot container
+│   │   ├── ChatHeader.jsx         # Header with service status and reset button
+│   │   ├── ChatMessages.jsx       # Message stream and welcome screen
+│   │   ├── ChatMessage.jsx        # Message bubble with Markdown rendering
+│   │   ├── SourceList.jsx         # Expandable source list and external links
+│   │   ├── SuggestedQuestions.jsx # Starter questions
+│   │   ├── TypingIndicator.jsx    # Loading animation
+│   │   ├── ChatInput.jsx          # Auto-resizing message input
+│   │   └── ErrorMessage.jsx       # Error display and retry action
 │   ├── hooks/
-│   │   └── useChat.js             # Session state & API communication hook
+│   │   └── useChat.js             # Chat state and API communication
 │   ├── services/
-│   │   └── ragApi.js              # HTTP client with timeouts & error normalization
+│   │   └── ragApi.js              # FastAPI HTTP client and error handling
 │   ├── utils/
-│   │   └── responseParser.js      # Parser for normalizing answer, sources & badges
+│   │   └── responseParser.js      # Response normalization and source labels
 │   ├── styles/
-│   │   ├── index.css              # Global tokens & CSS variables
-│   │   └── chatbot.css            # Chatbot styling & responsive media queries
+│   │   ├── index.css              # Global styles and CSS variables
+│   │   └── chatbot.css            # Chatbot layout and responsive styles
 │   ├── App.jsx
 │   └── main.jsx
 ├── .env.example
