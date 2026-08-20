@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import time
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
@@ -60,14 +61,26 @@ async def chat(
     payload: ChatRequest,
     x_service_signature: str | None = Header(default=None),
 ) -> ChatResponse:
+    request_start = time.perf_counter()
+
     raw_body = await request.body()
+    print(raw_body)
     _verify_service_signature(raw_body, x_service_signature)
 
     try:
+        rag_start = time.perf_counter()
+
         result = answer_question(payload.message)
+        print(result)
+
+        rag_time = time.perf_counter() - rag_start
+        print(f"RAG pipeline time: {rag_time:.3f}s")
+
     except Exception as exc:  # noqa: BLE001
-        # Never leak internal exception details/secrets to the client.
         logger.exception("Unhandled error while processing chat request")
-        raise HTTPException(status_code=500, detail="Internal error while generating a response") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Internal error while generating a response",
+        ) from exc
 
     return ChatResponse(answer=result["answer"])

@@ -12,13 +12,14 @@ from __future__ import annotations
 from graph.state import ChatState
 from rag.generation.gemini import validate_answer
 from rag.prompts.rag_prompt import build_validation_prompt
+from utils.timing import timed
 
 SAFE_INSUFFICIENT_EVIDENCE_RESPONSE = (
     "I don't have enough reliable information in the available knowledge base to answer that "
     "confidently. Could you rephrase the question, or ask something else about the site?"
 )
 
-
+@timed("Validation")
 def validate_node(state: ChatState) -> dict:
     context = state.get("final_context", [])
     prompt = build_validation_prompt(state["message"], state["answer"], context)

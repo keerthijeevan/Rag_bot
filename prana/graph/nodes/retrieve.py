@@ -14,8 +14,9 @@ from __future__ import annotations
 
 from graph.state import ChatState
 from rag.retrieval.retriever import retrieve
+from utils.timing import timed
 
-
+@timed("Retrieval + Reranking")
 def retrieve_node(state: ChatState) -> dict:
     result = retrieve(state["message"])
     return {

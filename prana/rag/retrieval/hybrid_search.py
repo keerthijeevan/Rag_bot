@@ -8,6 +8,7 @@ one method dominating just because its score range happens to be larger).
 """
 
 from __future__ import annotations
+import time
 
 from qdrant_client.http import models as qmodels
 
