@@ -27,7 +27,7 @@ export async function checkHealth() {
   const timeoutId = setTimeout(() => controller.abort(), 6000);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(`${API_BASE_URL}/rith`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
       signal: controller.signal,

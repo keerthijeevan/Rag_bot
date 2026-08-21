@@ -1,16 +1,14 @@
 """
 Rerank retrieved candidates with a cross-encoder.
 
-Dense/sparse/hybrid retrieval scores query and document independently
-(bi-encoder style), which is fast but less accurate. A cross-encoder scores
-the (query, document) pair jointly, giving a much stronger relevance signal
--- used here as a second stage over a small candidate set rather than over
-the whole collection, since it's far more expensive per-item.
+Retrieval produces a small candidate set. The cross-encoder then scores
+query-document pairs jointly to improve relevance ordering.
 """
 
 from __future__ import annotations
 
 import threading
+import time
 from functools import lru_cache
 
 from rag.retrieval.candidate import Candidate
@@ -34,19 +32,53 @@ class Reranker:
         with _model_lock:
             return _load_reranker(self.model_name)
 
-    def rerank(self, query: str, candidates: list[Candidate], top_k: int) -> list[Candidate]:
-        """Score every candidate against the query and return the top_k,
-        each annotated with `rerank_score`. Candidates are otherwise
-        unchanged (score/retrieval_method from the original retrieval
-        stage are preserved for debugging/observability)."""
+    def rerank(
+        self,
+        query: str,
+        candidates: list[Candidate],
+        top_k: int,
+    ) -> list[Candidate]:
+
         if not candidates:
             return []
 
-        pairs = [(query, candidate.text) for candidate in candidates]
-        scores = self.model.predict(pairs)
+        # Only rerank the strongest candidates from retrieval.
+        # This reduces expensive CrossEncoder inference.
+        rerank_candidates = candidates[:5]
 
-        for candidate, score in zip(candidates, scores):
+        pairs = [
+            (query, candidate.text)
+            for candidate in rerank_candidates
+        ]
+
+        print(f"[TIMING] Reranker candidates: {len(pairs)}")
+
+        start = time.perf_counter()
+
+        scores = self.model.predict(
+            pairs,
+            batch_size=32,
+            show_progress_bar=False,
+        )
+
+        rerank_time = time.perf_counter() - start
+
+        print(
+            f"[TIMING] Reranker inference: "
+            f"{rerank_time:.3f}s"
+        )
+
+        for candidate, score in zip(rerank_candidates, scores):
             candidate.rerank_score = float(score)
 
-        ranked = sorted(candidates, key=lambda c: c.rerank_score or float("-inf"), reverse=True)
+        ranked = sorted(
+            rerank_candidates,
+            key=lambda c: (
+                c.rerank_score
+                if c.rerank_score is not None
+                else float("-inf")
+            ),
+            reverse=True,
+        )
+
         return ranked[:top_k]
