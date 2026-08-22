@@ -1,36 +1,30 @@
 """
-Rerank retrieved candidates with a cross-encoder.
+Rerank retrieved candidates through the remote Railway reranker API.
 
-Retrieval produces a small candidate set. The cross-encoder then scores
-query-document pairs jointly to improve relevance ordering.
+The main RAG backend does not load the CrossEncoder locally.
+It sends the retrieved document texts to the remote reranker
+and maps the returned indexes and scores back to the original
+Candidate objects.
 """
 
 from __future__ import annotations
 
-import threading
 import time
-from functools import lru_cache
 
+import httpx
+
+from config.settings import Settings, get_settings
 from rag.retrieval.candidate import Candidate
-
-_model_lock = threading.Lock()
-
-
-@lru_cache(maxsize=2)
-def _load_reranker(model_name: str):
-    from sentence_transformers import CrossEncoder
-
-    return CrossEncoder(model_name)
 
 
 class Reranker:
-    def __init__(self, model_name: str = "BAAI/bge-reranker-base"):
+    def __init__(
+        self,
+        model_name: str = "cross-encoder/ettin-reranker-17m-v1",
+        settings: Settings | None = None,
+    ):
         self.model_name = model_name
-
-    @property
-    def model(self):
-        with _model_lock:
-            return _load_reranker(self.model_name)
+        self.settings = settings or get_settings()
 
     def rerank(
         self,
@@ -42,37 +36,62 @@ class Reranker:
         if not candidates:
             return []
 
-        # Only rerank the strongest candidates from retrieval.
-        # This reduces expensive CrossEncoder inference.
+        # Preserve the existing behavior:
+        # only the first 5 candidates are sent for reranking.
         rerank_candidates = candidates[:5]
 
-        pairs = [
-            (query, candidate.text)
+        documents = [
+            candidate.text
             for candidate in rerank_candidates
         ]
 
-        print(f"[TIMING] Reranker candidates: {len(pairs)}")
+        print(
+            f"[TIMING] Reranker candidates: "
+            f"{len(documents)}"
+        )
+
+        payload = {
+            "query": query,
+            "documents": documents,
+            "top_k": top_k,
+        }
 
         start = time.perf_counter()
 
-        scores = self.model.predict(
-            pairs,
-            batch_size=32,
-            show_progress_bar=False,
+        response = httpx.post(
+            self.settings.reranker_url,
+            json=payload,
+            timeout=self.settings.reranker_timeout_seconds,
         )
+
+        response.raise_for_status()
+
+        data = response.json()
 
         rerank_time = time.perf_counter() - start
 
         print(
-            f"[TIMING] Reranker inference: "
+            f"[TIMING] Remote reranker request: "
             f"{rerank_time:.3f}s"
         )
 
-        for candidate, score in zip(rerank_candidates, scores):
-            candidate.rerank_score = float(score)
+        results = data["results"]
 
-        ranked = sorted(
-            rerank_candidates,
+        ranked = []
+
+        for result in results:
+            index = result["index"]
+            score = float(result["score"])
+
+            # IMPORTANT:
+            # Use the original Candidate object.
+            candidate = rerank_candidates[index]
+
+            candidate.rerank_score = score
+
+            ranked.append(candidate)
+
+        ranked.sort(
             key=lambda c: (
                 c.rerank_score
                 if c.rerank_score is not None

@@ -14,15 +14,6 @@ from rag.retrieval.hybrid_search import hybrid_search
 from rag.retrieval.reranker import Reranker
 
 
-_reranker_cache: dict[str, Reranker] = {}
-
-
-def _get_reranker(model_name: str) -> Reranker:
-    if model_name not in _reranker_cache:
-        _reranker_cache[model_name] = Reranker(model_name)
-    return _reranker_cache[model_name]
-
-
 def advanced_search(
     query: str,
     filters: RetrievalFilters | None = None,
@@ -49,7 +40,7 @@ def advanced_search(
     if not candidates:
         return []
 
-    reranker = _get_reranker(settings.reranker_model)
+    reranker = Reranker(settings=settings)
 
     return reranker.rerank(
         query,

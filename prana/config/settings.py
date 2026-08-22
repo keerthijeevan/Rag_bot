@@ -185,9 +185,15 @@ class Settings(BaseSettings):
         description="Number of candidates kept after reranking.",
     )
 
-    reranker_model: str = Field(
-        default="cross-encoder/ms-marco-MiniLM-L-6-v2",
-        description="Cross-encoder model used to rerank retrieved candidates.",
+    reranker_url: str = Field(
+       default="",
+       description="HTTP endpoint of the remote reranker service.",
+    )
+
+    reranker_timeout_seconds: float = Field(
+       default=10.0,
+       gt=0,
+       description="Timeout for requests to the remote reranker service.",
     )
 
     hybrid_dense_weight: float = Field(
